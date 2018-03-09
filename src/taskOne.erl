@@ -7,15 +7,18 @@
 %%% Created : 09. Mar 2018 15:08
 %%%-------------------------------------------------------------------
 
-% Run: c(test), c(taskOne), c(monitor), c(server), test:starter().
+% Run: c(test), c(taskOne), c(monitor), c(server), taskOne:testOne().
 
 -module(taskOne).
 -author("raphael").
 
 -import(server, [serverEstablished/5]).
+-import(monitor, [tcpMonitorStart/0]).
 
 %% API
--export([serverStart/0, clientStart/2]).
+-export([serverStart/0, clientStart/2, testOne/0]).
+
+% Question 1
 
 serverStart() -> serverStart(1).
 
@@ -30,6 +33,8 @@ serverStart(ServerSeq) ->
       end
   end
 .
+
+% Question 2
 
 clientStart(Server, Message) ->
   Server ! {self(), {syn, 0, 0}},
@@ -58,4 +63,17 @@ sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate) when (length(Candi
 ;
 sendMessage(Server, ServerSeq, ClientSeq, [Char | Rest], Candidate) ->
   sendMessage(Server, ServerSeq, ClientSeq, Rest, Candidate ++ [Char])
+.
+
+% Question 3
+% The monitor is acting like a client and a server, if it receives a message from the client, it forwards it to the server, if it receives one from the server it forwards it to the client
+
+% Question 4
+
+testOne() ->
+  Server = spawn(?MODULE, serverStart, []),
+  Monitor = spawn(monitor, tcpMonitorStart, []),
+  Client = spawn(?MODULE, clientStart,
+    [Monitor, "A small piece of text"]),
+  Monitor ! {Client, Server}
 .

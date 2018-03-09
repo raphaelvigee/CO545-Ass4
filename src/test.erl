@@ -10,7 +10,6 @@
 -author("raphael").
 
 -import(taskOne, [serverStart/0]).
--import(monitor, [tcpMonitorStart/0]).
 
 %% API
 -export([starter/0]).
