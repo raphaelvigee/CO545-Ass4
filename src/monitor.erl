@@ -10,8 +10,8 @@ tcpMonitorStart() ->
 
 tcpMonitor(Client, Server) ->
   receive
-    {Client, TCP} -> Server!{self(), TCP}, debug(Client, Client, TCP);
-    {Server, TCP} -> Client!{self(), TCP}, debug(Client, Server, TCP)
+    {Client, TCP} -> Server ! {self(), TCP}, debug(Client, Client, TCP);
+    {Server, TCP} -> Client ! {self(), TCP}, debug(Client, Server, TCP)
   end,
   tcpMonitor(Client, Server).
 

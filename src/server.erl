@@ -8,7 +8,7 @@ serverEstablished(Client, ServerSeq, ClientSeq, CollectedData, NumPackets) ->
     {Client, {fin, ClientSeq, ServerSeq}} ->
       % received a 'fin' packet
       % response with an 'ack' (passive close)
-      Client!{self(), {ack, ServerSeq, ClientSeq}},
+      Client ! {self(), {ack, ServerSeq, ClientSeq}},
       % Output the data
       io:fwrite("Data: ~p~n", [CollectedData]),
       % Output a debug message
@@ -19,7 +19,7 @@ serverEstablished(Client, ServerSeq, ClientSeq, CollectedData, NumPackets) ->
 
     {Client, {ack, ClientSeq, ServerSeq, Data}} ->
       % Received an 'ack' packet with data
-      Client!{self(), {ack, ServerSeq, ClientSeq + length(Data)}},
+      Client ! {self(), {ack, ServerSeq, ClientSeq + length(Data)}},
       % Send an 'ack' packet (no data)
       % Go back to the main loop
       serverEstablished(Client, ServerSeq, ClientSeq + length(Data), CollectedData ++ Data, NumPackets + 1)

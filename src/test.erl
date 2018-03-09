@@ -9,6 +9,9 @@
 -module(test).
 -author("raphael").
 
+-import(taskOne, [serverStart/0]).
+-import(monitor, [tcpMonitorStart/0]).
+
 %% API
 -export([starter/0]).
 
@@ -17,4 +20,5 @@ starter() ->
   _Client1 = spawn(taskOne, clientStart,
     [Server, "The quick brown fox jumped over the lazy dog."]),
   _Client2 = spawn(taskOne, clientStart,
-    [Server, "Contrary to popular belief, Lorem Ipsum is not simply random text."]).
+    [Server, "Contrary to popular belief, Lorem Ipsum is not simply random text."])
+.
