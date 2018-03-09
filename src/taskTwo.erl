@@ -28,16 +28,17 @@ lossyNetworkStart() ->
 
 lossyNetwork(Client, Server) ->
   receive
-    {Client, TCP} -> faultyLink(Client, Server, TCP, 50);
+    {Client, TCP} -> faultyLink(Client, Client, Server, TCP, 50);
     {Server, TCP} -> Client ! {self(), TCP}, debug(Client, Client, TCP, false)
   end,
-  lossyNetwork(Client, Server).
+  lossyNetwork(Client, Server)
+.
 
-faultyLink(Client, Target, TCP, Prob) ->
+faultyLink(Client, Sender, Target, TCP, Prob) ->
   R = rand:uniform(100),
   if
-    R =< Prob -> debug(Client, Target, TCP, true);
-    true -> Target ! {self(), TCP}, debug(Client, Target, TCP, false)
+    R =< Prob -> debug(Client, Sender, TCP, true);
+    true -> Target ! {self(), TCP}, debug(Client, Sender, TCP, false)
   end
 .
 
