@@ -20,16 +20,16 @@
 
 % Question 1
 
-serverStart() -> serverStart(1).
+serverStart() -> serverStart(0).
 
 serverStart(ServerSeq) ->
   receive
     {Client, {syn, ClientSeq, _}} ->
       Client ! {self(), {synack, ServerSeq, ClientSeq + 1}},
       receive
-        {Client, {ack, NewClientSeq, ServerSeq}} ->
-          NewServerSeq = serverEstablished(Client, ServerSeq, NewClientSeq, "", 0),
-          serverStart(NewServerSeq + 1)
+        {Client, {ack, NewClientSeq, NewServerSeq}} ->
+          NewNewServerSeq = serverEstablished(Client, NewServerSeq, NewClientSeq, "", 0),
+          serverStart(NewNewServerSeq)
       end
   end
 .
@@ -40,9 +40,10 @@ clientStart(Server, Message) ->
   Server ! {self(), {syn, 0, 0}},
   receive
     {Server, {synack, ServerSeq, ClientSeq}} ->
-      Server ! {self(), {ack, ClientSeq, ServerSeq}},
+      NewServerSeq = ServerSeq + 1,
+      Server ! {self(), {ack, ClientSeq, NewServerSeq}},
 
-      sendMessage(Server, ServerSeq, ClientSeq, Message)
+      sendMessage(Server, NewServerSeq, ClientSeq, Message)
   end
 .
 
