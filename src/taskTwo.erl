@@ -29,7 +29,7 @@ lossyNetworkStart() ->
 lossyNetwork(Client, Server) ->
   receive
     {Client, TCP} -> faultyLink(Client, Client, Server, TCP, 50);
-    {Server, TCP} -> Client ! {self(), TCP}, debug(Client, Client, TCP, false)
+    {Server, TCP} -> Client ! {self(), TCP}, debug(Client, Server, TCP, false)
   end,
   lossyNetwork(Client, Server)
 .
