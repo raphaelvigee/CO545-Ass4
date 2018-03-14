@@ -88,7 +88,7 @@ clientStartRobust(Server, Message) ->
 
       case Status of
         success -> io:format("Client done.~n", []);
-        timeout ->
+        retries_exceeded ->
           io:format("Connection reset...~n"),
           clientStartRobust(Server, Message)
       end
@@ -99,7 +99,7 @@ clientStartRobust(Server, Message) ->
 
 sendMessage(Server, ServerSeq, ClientSeq, Message) -> sendMessage(Server, ServerSeq, ClientSeq, Message, "", 0).
 
-sendMessage(_, _, _, _, _, ?Retries) -> timeout;
+sendMessage(_, _, _, _, _, ?Retries) -> retries_exceeded;
 sendMessage(Server, ServerSeq, ClientSeq, "", "", Tries) ->
   Server ! {self(), {fin, ClientSeq, ServerSeq}},
   receive
