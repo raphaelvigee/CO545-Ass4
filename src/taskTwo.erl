@@ -28,12 +28,13 @@ serverStart(ServerSeq) ->
   receive
     {Client, {syn, ClientSeq, _}} ->
       Client ! {self(), {synack, ServerSeq, ClientSeq + 1}},
+      NewServerSeq = ServerSeq + 1,
       receive
         {Client, {ack, NewClientSeq, NewServerSeq}} ->
-          NewNewServerSeq = serverEstablished(Client, NewServerSeq, NewClientSeq, "", 0),
-          serverStart(NewNewServerSeq)
+          serverEstablished(Client, NewServerSeq, NewClientSeq, "", 0),
+          serverStart(NewServerSeq)
       after
-        ?Timeout * ?Retries -> serverStart(ServerSeq)
+        ?Timeout * ?Retries -> serverStart(NewServerSeq)
       end
   end
 .
@@ -87,7 +88,9 @@ clientStartRobust(Server, Message) ->
 
       case Status of
         success -> io:format("Client done.~n", []);
-        failure -> clientStartRobust(Server, Message)
+        timeout ->
+          io:format("Connection reset...~n"),
+          clientStartRobust(Server, Message)
       end
   after
     ?Timeout -> clientStartRobust(Server, Message)
@@ -96,7 +99,7 @@ clientStartRobust(Server, Message) ->
 
 sendMessage(Server, ServerSeq, ClientSeq, Message) -> sendMessage(Server, ServerSeq, ClientSeq, Message, "", 0).
 
-sendMessage(_, _, _, _, _, ?Retries) -> failure;
+sendMessage(_, _, _, _, _, ?Retries) -> timeout;
 sendMessage(Server, ServerSeq, ClientSeq, "", "", Tries) ->
   Server ! {self(), {fin, ClientSeq, ServerSeq}},
   receive
