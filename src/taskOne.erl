@@ -20,19 +20,36 @@
 
 % Question 1
 
-serverStart() -> serverStart(0).
+serverStart() -> serverStart(0, #{}).
 
-serverStart(ServerSeq) ->
+serverStart(ServerSeq, ClientServerMap) ->
+  Server = self(),
   receive
     {Client, {syn, ClientSeq, _}} ->
-      Client ! {self(), {synack, ServerSeq, ClientSeq + 1}},
-      receive
-        {Client, {ack, NewClientSeq, NewServerSeq}} ->
-          NewNewServerSeq = serverEstablished(Client, NewServerSeq, NewClientSeq, "", 0),
-          serverStart(NewNewServerSeq)
-      end
+      RequestThread = spawn(fun() -> requestHandler(Client, Server, ClientSeq, ServerSeq) end),
+      io:format("RequestThread: ~p~n", [RequestThread]),
+      serverStart(ServerSeq, [{Client, RequestThread} | ClientServerMap]);
+    {Client, TCP} ->
+      T = get(ClientServerMap, Client),
+      io:format("Forward Target: ~p~n", [T]),
+      T ! {Client, TCP},
+      serverStart(ServerSeq, ClientServerMap);
+    X -> io:format("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Other: ~p~n", [X])
   end
 .
+
+requestHandler(Client, Server, ClientSeq, ServerSeq) ->
+  Client ! {Server, {synack, ServerSeq, ClientSeq + 1}},
+  receive
+    {Client, {ack, NewClientSeq, NewServerSeq}} ->
+      io:format("Request handler: ~p~n", [{Client, {ack, NewClientSeq, NewServerSeq}}]),
+      serverEstablished(Client, NewServerSeq, NewClientSeq, "", 0)
+  end
+.
+
+get([], _) -> null;
+get([{Key, V} | _], Key) -> V;
+get([_ | R], Key) -> get(R, Key).
 
 % Question 2
 
@@ -76,5 +93,8 @@ testOne() ->
   Monitor = spawn(monitor, tcpMonitorStart, []),
   Client = spawn(?MODULE, clientStart,
     [Monitor, "A small piece of text"]),
-  Monitor ! {Client, Server}
+  Monitor ! {Client, Server},
+  io:format("#### Server: ~p~n", [Server]),
+  io:format("#### Monitor: ~p~n", [Monitor]),
+  io:format("#### Client: ~p~n", [Client])
 .

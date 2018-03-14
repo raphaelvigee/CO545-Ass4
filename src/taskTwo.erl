@@ -50,7 +50,7 @@ debug(Client, P, TCP, Dropped) ->
 
 arrow(Dropped) ->
   if
-    Dropped == true -> "~~~";
+    Dropped == true -> "-X-";
     true -> "---"
   end
 .
@@ -62,7 +62,7 @@ clientStartRobust(Server, Message) ->
   receive
     {Server, {synack, ServerSeq, ClientSeq}} ->
       NewServerSeq = ServerSeq + 1,
-      Server ! {self(), {ack, ClientSeq, NewServerSeq}},
+%%      Server ! {self(), {ack, ClientSeq, NewServerSeq}},
 
       sendMessage(Server, NewServerSeq, ClientSeq, Message)
   after
@@ -70,27 +70,30 @@ clientStartRobust(Server, Message) ->
   end
 .
 
-sendMessage(Server, ServerSeq, ClientSeq, Message) -> sendMessage(Server, ServerSeq, ClientSeq, Message, "").
+sendMessage(Server, ServerSeq, ClientSeq, Message) -> sendMessage(Server, ServerSeq, ClientSeq, Message, "", 0).
 
-sendMessage(Server, ServerSeq, ClientSeq, "", "") ->
+sendMessage(Server, _, _, Message, _, 10) ->
+  clientStartRobust(Server, Message)
+;
+sendMessage(Server, ServerSeq, ClientSeq, "", "", Tries) ->
   Server ! {self(), {fin, ClientSeq, ServerSeq}},
   receive
     {Server, {ack, ServerSeq, ClientSeq}} -> io:format("Client done.~n", [])
   after
-    2000 -> sendMessage(Server, ServerSeq, ClientSeq, "", "")
+    2000 -> sendMessage(Server, ServerSeq, ClientSeq, "", "", Tries + 1)
   end
 ;
-sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate) when (length(Candidate) == 7) orelse (length(Message) == 0) ->
+sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate, Tries) when (length(Candidate) == 7) orelse (length(Message) == 0) ->
   Server ! {self(), {ack, ClientSeq, ServerSeq, Candidate}},
   receive
     {Server, {ack, ServerSeq, NewClientSeq}} ->
-      sendMessage(Server, ServerSeq, NewClientSeq, Message, "")
+      sendMessage(Server, ServerSeq, NewClientSeq, Message, "", Tries)
   after
-    2000 -> sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate)
+    2000 -> sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate, Tries + 1)
   end
 ;
-sendMessage(Server, ServerSeq, ClientSeq, [Char | Rest], Candidate) ->
-  sendMessage(Server, ServerSeq, ClientSeq, Rest, Candidate ++ [Char])
+sendMessage(Server, ServerSeq, ClientSeq, [Char | Rest], Candidate, Tries) ->
+  sendMessage(Server, ServerSeq, ClientSeq, Rest, Candidate ++ [Char], Tries)
 .
 
 testTwo() ->

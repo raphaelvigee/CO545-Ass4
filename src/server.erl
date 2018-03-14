@@ -4,6 +4,7 @@
 -spec serverEstablished(pid(), integer(), integer(), string(), integer()) -> integer().
 
 serverEstablished(Client, ServerSeq, ClientSeq, CollectedData, NumPackets) ->
+  io:format("Connection established: ~p ~p ~p ~p ~p~n", [Client, ServerSeq, ClientSeq, CollectedData, NumPackets]),
   receive
     {Client, {fin, ClientSeq, ServerSeq}} ->
       % received a 'fin' packet
@@ -18,9 +19,13 @@ serverEstablished(Client, ServerSeq, ClientSeq, CollectedData, NumPackets) ->
       ServerSeq;
 
     {Client, {ack, ClientSeq, ServerSeq, Data}} ->
+      io:format("Server ACK: ~p~n", [{Client, {ack, ClientSeq, ServerSeq, Data}}]),
+
       % Received an 'ack' packet with data
-      Client ! {self(), {ack, ServerSeq, ClientSeq + length(Data)}},
+      Client ! {self(), {ack, ServerSeq, ClientSeq + length(Data)}}, %% STUPID self()
       % Send an 'ack' packet (no data)
       % Go back to the main loop
-      serverEstablished(Client, ServerSeq, ClientSeq + length(Data), CollectedData ++ Data, NumPackets + 1)
+      serverEstablished(Client, ServerSeq, ClientSeq + length(Data), CollectedData ++ Data, NumPackets + 1);
+
+    X -> io:format("XXXXXXXXXXXXXXXXXX Other: ~p~n", [X])
   end.
