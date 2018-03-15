@@ -75,6 +75,6 @@ testOne() ->
   Server = spawn(?MODULE, serverStart, []),
   Monitor = spawn(monitor, tcpMonitorStart, []),
   Client = spawn(?MODULE, clientStart,
-    [Monitor, "A small piece of text"]),
+    [Monitor, "Small piece of text"]),
   Monitor ! {Client, Server}
 .

@@ -13,31 +13,14 @@
 -author("raphael").
 
 -import(server, [serverEstablished/5]).
+-import(taskOne, [serverStart/0]).
 
 %% API
 -export([lossyNetwork/2, clientStartRobust/2, testTwo/0]).
 
 -define(Timeout, 2000).
--define(Retries, 5).
 
 % Question 1
-
-%% Duplicated server to handle closing connection after Timeout * Retries (2000 * 5 = 100000 ms)
-serverStart() -> serverStart(0).
-serverStart(ServerSeq) ->
-  receive
-    {Client, {syn, ClientSeq, _}} ->
-      Client ! {self(), {synack, ServerSeq, ClientSeq + 1}},
-      NewServerSeq = ServerSeq + 1,
-      receive
-        {Client, {ack, NewClientSeq, NewServerSeq}} ->
-          serverEstablished(Client, NewServerSeq, NewClientSeq, "", 0),
-          serverStart(NewServerSeq)
-      after
-        ?Timeout * ?Retries -> serverStart(NewServerSeq)
-      end
-  end
-.
 
 lossyNetworkStart() ->
   % Wait to be sent the address of the client and the address
@@ -87,44 +70,45 @@ clientStartRobust(Server, Message) ->
       Status = sendMessage(Server, NewServerSeq, ClientSeq, Message),
 
       case Status of
-        success -> io:format("Client done.~n", []);
-        retries_exceeded ->
-          io:format("Connection reset...~n"),
-          clientStartRobust(Server, Message)
+        success -> io:format("Client done.~n", [])
       end
   after
     ?Timeout -> clientStartRobust(Server, Message)
   end
 .
 
-sendMessage(Server, ServerSeq, ClientSeq, Message) -> sendMessage(Server, ServerSeq, ClientSeq, Message, "", 0).
+sendMessage(Server, ServerSeq, ClientSeq, Message) -> sendMessage(Server, ServerSeq, ClientSeq, Message, "", false).
 
-sendMessage(_, _, _, _, _, ?Retries) -> retries_exceeded;
-sendMessage(Server, ServerSeq, ClientSeq, "", "", Tries) ->
+sendMessage(Server, ServerSeq, ClientSeq, "", "", FullHandshake) ->
   Server ! {self(), {fin, ClientSeq, ServerSeq}},
   receive
     {Server, {ack, ServerSeq, ClientSeq}} -> success
   after
-    ?Timeout -> sendMessage(Server, ServerSeq, ClientSeq, "", "", Tries + 1)
+    ?Timeout -> sendMessage(Server, ServerSeq, ClientSeq, "", "", FullHandshake)
   end
 ;
-sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate, Tries) when (length(Candidate) == 7) orelse (length(Message) == 0) ->
+sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate, FullHandshake) when (length(Candidate) == 7) orelse (length(Message) == 0) ->
   Server ! {self(), {ack, ClientSeq, ServerSeq, Candidate}},
   receive
     {Server, {ack, ServerSeq, NewClientSeq}} ->
-      sendMessage(Server, ServerSeq, NewClientSeq, Message, "", 0)
+      sendMessage(Server, ServerSeq, NewClientSeq, Message, "", true)
   after
-    ?Timeout -> sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate, Tries + 1)
+    ?Timeout ->
+      if
+        FullHandshake == false -> Server ! {self(), {ack, ClientSeq, ServerSeq}};
+        true -> null
+      end,
+      sendMessage(Server, ServerSeq, ClientSeq, Message, Candidate, FullHandshake)
   end
 ;
-sendMessage(Server, ServerSeq, ClientSeq, [Char | Rest], Candidate, Tries) ->
-  sendMessage(Server, ServerSeq, ClientSeq, Rest, Candidate ++ [Char], Tries)
+sendMessage(Server, ServerSeq, ClientSeq, [Char | Rest], Candidate, FullHandshake) ->
+  sendMessage(Server, ServerSeq, ClientSeq, Rest, Candidate ++ [Char], FullHandshake)
 .
 
 testTwo() ->
-  Server = spawn(fun() -> serverStart() end),
+  Server = spawn(taskOne, serverStart, []),
   Monitor = spawn(fun() -> lossyNetworkStart() end),
   Client = spawn(?MODULE, clientStartRobust,
-    [Monitor, "A small piece of text"]),
+    [Monitor, "Small piece of text"]),
   Monitor ! {Client, Server}
 .
